@@ -1,0 +1,7 @@
+streamlit
+jira
+requests
+supabase
+python-dotenv
+openpyxl
+pandas
