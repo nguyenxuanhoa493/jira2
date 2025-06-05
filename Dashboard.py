@@ -10,7 +10,7 @@ st.set_page_config(
     layout="wide",  # Full độ rộng
     initial_sidebar_state="expanded",
 )
-st.write(jira.jira)
+st.write(jira.test_connection())
 # st.write(
 #     jira.jira.get(sprint_id=408, board_id=jira.default_board_id)
 # )  # Hiển thị trạng thái kết nối và tên dự án mặc định ở dưới cùng sidebar
