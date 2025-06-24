@@ -76,7 +76,7 @@ def _export_to_excel(df_worklog, start_date=None, end_date=None):
     output = BytesIO()
 
     # Tạo Excel writer
-    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:  # type: ignore
         # Export pivot table
         pivot_table.to_excel(
             writer,
@@ -266,12 +266,13 @@ def _generate_stats_html_table(pivot_table):
     html_table += "<tbody>\n"
     for i, (user, row) in enumerate(pivot_table.iterrows()):
         is_total_row = user == "📊 TỔNG"
-        html_table += f'<tr{"" if not is_total_row else " class=\"total-row\""}>'
+        row_class = ' class="total-row"' if is_total_row else ""
+        html_table += f"<tr{row_class}>"
         html_table += f'<td class="user-col">{user}</td>'
 
-        for j, (col, value) in enumerate(row.items()):
-            is_total_col = col == "Tổng (h)"
-            formatted_value = _format_hours_cell(value, is_total_row, is_total_col)
+        for j, (col_name, cell_value) in enumerate(row.items()):
+            is_total_col = col_name == "Tổng (h)"
+            formatted_value = _format_hours_cell(cell_value, is_total_row, is_total_col)
             html_table += f"<td>{formatted_value}</td>"
 
         html_table += "</tr>\n"

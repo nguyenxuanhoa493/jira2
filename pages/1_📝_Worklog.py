@@ -122,7 +122,8 @@ def clear_worklog_cache():
     """Xóa cache worklog data và reset filters"""
     # Xóa cache data
     keys_to_remove = [
-        key for key in st.session_state.keys() if key.startswith("worklog_data_")
+        key for key in st.session_state.keys() 
+        if isinstance(key, str) and key.startswith("worklog_data_")
     ]
     for key in keys_to_remove:
         del st.session_state[key]
@@ -154,7 +155,8 @@ def main():
 
         # Cache data info
         cache_keys = [
-            key for key in st.session_state.keys() if key.startswith("worklog_data_")
+            key for key in st.session_state.keys() 
+            if isinstance(key, str) and key.startswith("worklog_data_")
         ]
         if cache_keys:
             st.write(f"📦 **Cache data:** {len(cache_keys)} entries")

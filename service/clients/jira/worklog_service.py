@@ -39,14 +39,25 @@ class WorklogService(JiraBase):
         jql_query = f'project = "{self.project_key}" AND worklogDate >= "{start_date_str}" AND worklogDate <= "{end_date_str}"'
         # print(jql_query)
         try:
-            # Tìm kiếm issue với JQL
-            issues = self.jira.search_issues(
-                jql_query,
-                maxResults=1000,  # Có thể điều chỉnh số lượng tối đa
-                expand="worklog",  # Mở rộng để lấy thông tin worklog
-            )
+            # Xử lý phân trang để lấy tất cả issue
+            all_issues = []
+            start_at = 0
+            while True:
+                issues = self.jira.search_issues(
+                    jql_query,
+                    startAt=start_at,
+                    maxResults=100,  # Lấy 100 issue mỗi lần để phân trang
+                    expand="worklog",  # Mở rộng để lấy thông tin worklog
+                )
+                if not issues:
+                    break  # Dừng nếu không còn issue
+                all_issues.extend(issues)
+                start_at += len(issues)
+                if len(issues) < 100:
+                    break  # Đã lấy trang cuối cùng
+
             result = []
-            for issue in issues:
+            for issue in all_issues:
                 issue_data = {
                     "key": issue.key,
                     "summary": issue.fields.summary,
