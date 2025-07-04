@@ -1,5 +1,3 @@
-from re import T
-
 from narwhals import dataframe
 from service.base.jira_base import JiraBase
 import streamlit as st
