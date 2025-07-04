@@ -171,7 +171,9 @@ def main():
         list_issues_active_in_sprint = sprint_service.get_issue_active_in_sprint()
 
         if not list_issues_active_in_sprint.empty:
-            st.dataframe(sprint_service.list_issues, use_container_width=True)
+            st.dataframe(
+                sprint_service.get_issue_active_in_sprint(), use_container_width=True
+            )
         else:
             st.info("Không có issues active trong sprint này.")
 
