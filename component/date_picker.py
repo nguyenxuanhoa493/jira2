@@ -43,7 +43,7 @@ def render_date_picker() -> Tuple[datetime.date, datetime.date]:
         quick_select = st.selectbox(
             "Chọn nhanh khoảng thời gian",
             QUICK_SELECT_OPTIONS,
-            index=0,
+            index=2,
             key="quick_select_input",
         )
 

@@ -72,7 +72,7 @@ class JiraHybridClient(HybridSingletonBase):
         return self.user_service.search_users()
 
     # ===== SPRINT METHODS =====
-    def get_list_sprints(self, state=None):
+    def get_list_sprints(self, state: str = ""):
         """Lấy danh sách sprint của board hiện tại"""
         return self.sprint_service.get_list_sprints(state)
 
@@ -162,7 +162,7 @@ def reset_jira_hybrid():
     st.cache_resource.clear()
 
     # Clear session state
-    keys_to_remove = [k for k in st.session_state.keys() if "jira_hybrid" in k]
+    keys_to_remove = [k for k in st.session_state.keys() if isinstance(k, str) and "jira_hybrid" in k] 
     for key in keys_to_remove:
         del st.session_state[key]
 

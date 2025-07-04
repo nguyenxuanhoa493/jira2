@@ -1,6 +1,7 @@
 from datetime import datetime
 from conf import DEFAULT_PROJECT
 from service.base.jira_base import JiraBase
+import streamlit as st
 
 
 class WorklogService(JiraBase):
@@ -13,6 +14,40 @@ class WorklogService(JiraBase):
     def set_project_key(self, project_key):
         """Thiết lập project_key cho service"""
         self.project_key = project_key
+
+    def get_worklogs_by_issue_key(self, issue_key: str):
+        """
+        Lấy tất cả worklog của một issue dựa trên issue key.
+        Hàm sẽ tự động xử lý phân trang để lấy toàn bộ worklog.
+        """
+        if not issue_key:
+            raise ValueError("Issue key is required")
+
+        all_worklogs = []
+        start_at = 0
+        max_results = 50  # Số lượng worklog tối đa cho mỗi request
+
+        while True:
+            params = {
+                "startAt": start_at,
+                "maxResults": max_results,
+            }
+            # API endpoint để lấy worklog của issue
+            response = self.jira._get_json(f"issue/{issue_key}/worklog", params)
+
+            worklogs_on_page = response.get("worklogs", [])
+            if not worklogs_on_page:
+                break
+
+            all_worklogs.extend(worklogs_on_page)
+
+            total = response.get("total", 0)
+            start_at += len(worklogs_on_page)
+
+            if start_at >= total:
+                break
+
+        return all_worklogs
 
     def get_issues_with_worklog_in_period(self, start_date, end_date):
         """
@@ -94,3 +129,27 @@ class WorklogService(JiraBase):
         except Exception as e:
             print(f"Lỗi khi lấy issue có worklog: {e}")
             return []
+
+    def calculate_worklog_data(
+        self, worklogs: list, start_date: datetime, end_date: datetime
+    ):
+        author_name = []
+        time_spent_in_sprint_seconds = 0
+        for w in worklogs:
+            author = w["author"]["displayName"]
+            if author not in author_name:
+                author_name.append(author)
+            started_time = datetime.strptime(
+                w["started"], "%Y-%m-%dT%H:%M:%S.%f%z"
+            ).replace(tzinfo=None)
+            if started_time >= start_date and started_time <= end_date:
+                time_spent_in_sprint_seconds += w["timeSpentSeconds"]
+
+        unique_loggers_count = len(author_name)
+        time_spent_in_sprint_hours = round(time_spent_in_sprint_seconds / 3600, 2)
+        return {
+            "count_worklog": len(worklogs),
+            "unique_loggers_count": unique_loggers_count,
+            "time_spent_in_sprint_seconds": time_spent_in_sprint_seconds,
+            "time_spent_in_sprint_hours": f"{time_spent_in_sprint_hours:.2f}h",
+        }

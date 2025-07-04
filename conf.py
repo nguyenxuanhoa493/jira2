@@ -14,6 +14,36 @@ DEFAULT_PROJECT = os.getenv("DEFAULT_PROJECT")
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
+DEFAULT_FIELDS_ISSUE = [
+    "summary",
+    "status",
+    "assignee",
+    "creator",
+    "reporter",
+    "issuetype",
+    "priority",
+    "timeoriginalestimate",
+    "customfield_10060",
+    "customfield_10160",
+    "customfield_10159",
+    "customfield_10192",
+    "customfield_10132",
+    "customfield_10130",
+    "customfield_10031",
+    "customfield_10191",
+    "subtasks",
+    "reporter",
+    "worklog",
+    "closedSprints",
+    "created",
+    "updated",
+    "timetracking",
+    "duedate",
+]
+
+KEY_ISSUE_DEBUG = ""
+DEFAULT_MAX_ISSUE_PER_PAGE = 100
+
 
 def validate_supabase_config():
     """Kiểm tra cấu hình Supabase có hợp lệ không"""
