@@ -1,8 +1,14 @@
 from narwhals import dataframe
+from pandas.tseries.frequencies import key
 from service.base.jira_base import JiraBase
 import streamlit as st
 import pandas as pd
-from conf import DEFAULT_FIELDS_ISSUE, KEY_ISSUE_DEBUG, DEFAULT_MAX_ISSUE_PER_PAGE
+from conf import (
+    DEFAULT_FIELDS_ISSUE,
+    KEY_ISSUE_DEBUG,
+    DEFAULT_MAX_ISSUE_PER_PAGE,
+    STATUS_ORDER,
+)
 from service.utils.time_utils import (
     cal_hours_since_update,
     convert_time_str_to_datetime,
@@ -13,17 +19,29 @@ from service.utils.date_utils import parse_jira_datetime
 from service.utils.cache_utils import file_cache
 from typing import Optional
 from datetime import datetime
+from service.utils.date_utils import adjust_sprint_dates
 
 
 class SprintService(JiraBase):
     start_date = None
     end_date = None
+    board_id = 0
 
     """Service quản lý sprint trong Jira"""
 
-    def __init__(self, board_id=None):
+    def __init__(self, board_id=None, data_sprint: dict = {}):
         super().__init__()
-        self.board_id = board_id
+        if board_id:
+            self.board_id = board_id
+
+    def set_data_sprint(self, data_sprint: dict):
+        self.board_id = data_sprint.get("originBoardId", None)
+        self.start_date = data_sprint.get("startDate", None)
+        self.end_date = data_sprint.get("endDate", None)
+        self.start_date, self.end_date = adjust_sprint_dates(
+            self.start_date, self.end_date
+        )
+        self.goal = data_sprint.get("goal", "")
 
     def set_board_id(self, board_id):
         """Thiết lập board_id cho service"""
@@ -224,6 +242,7 @@ class SprintService(JiraBase):
         is_popup = _get_field(
             data=fields, field_name="customfield_10130", key="value", is_bool=True
         )
+
         feature = _get_field(data=fields, field_name="customfield_10132", key="value")
         steve_estimate = _get_field(
             data=fields, field_name="customfield_10159", key="value"
@@ -268,18 +287,27 @@ class SprintService(JiraBase):
         changelog = self._process_changelog(
             issue.get("changelog", {}).get("histories", [])
         )
-        active_in_sprint = (
+        is_show_dashboard = (
             True
             if (
-                issuetype != "Epic"
-                and data_worklog["time_spent_in_sprint_seconds"]
-                and not has_subtasks
-                and is_development
-                and assignee
-                and status != "Close"
+                issuetype != "Epic" and is_development and assignee and not has_subtasks
             )
             else False
         )
+        is_to_do = True if (status == "To Do" and is_show_dashboard) else False
+        active_in_sprint = (
+            True
+            if (
+                (
+                    data_worklog["time_spent_in_sprint_seconds"]
+                    and status != "Close"
+                    and is_show_dashboard
+                )
+                or is_to_do
+            )
+            else False
+        )
+
         if key == KEY_ISSUE_DEBUG and KEY_ISSUE_DEBUG:
             st.write(issue)
 
@@ -287,6 +315,7 @@ class SprintService(JiraBase):
             "key": key,
             "summary": summary,
             "status": status,
+            "status_in_sprint": changelog["status_in_sprint"],
             "issuetype": issuetype,
             "assignee": assignee,
             "reporter": reporter,
@@ -298,6 +327,7 @@ class SprintService(JiraBase):
             "env": env,
             "customer": customer,
             "is_development": is_development,
+            "is_show_dashboard": is_show_dashboard,
             "is_popup": is_popup,
             "feature": feature,
             "has_subtasks": has_subtasks,
@@ -348,6 +378,8 @@ class SprintService(JiraBase):
         time_done_in_sprint = None
         reopen_in_sprint = False
 
+        status_in_sprint = "To Do"
+
         # Sắp xếp lịch sử để đảm bảo xử lý đúng thứ tự thời gian
         histories.sort(key=lambda x: x.get("created", "s"))
 
@@ -368,6 +400,13 @@ class SprintService(JiraBase):
                     and time_change >= self.start_date
                     and time_change <= self.end_date
                 )
+
+                if (
+                    time_change is not None
+                    and self.end_date is not None
+                    and time_change <= self.end_date
+                ):
+                    status_in_sprint = status_to
 
                 if status_from == "Reopen":
                     count_reopen += 1
@@ -402,6 +441,7 @@ class SprintService(JiraBase):
         )
 
         return {
+            "status_in_sprint": status_in_sprint,
             "first_time_in_progress": first_time_in_progress,
             "count_reopen": count_reopen,
             "has_reopen": count_reopen > 0,
@@ -412,6 +452,50 @@ class SprintService(JiraBase):
             "duration_date_to_done": duration_date_to_done,
             "reopen_in_sprint": reopen_in_sprint,
         }
+
+    def get_metric_sprint(self):
+        list_issues_active = self.get_issue_active_in_sprint()
+        all_issues = self.list_issues[self.list_issues["is_show_dashboard"]]
+        count_issues = len(all_issues["is_development"])
+        st.write("Thống kê theo status_in_sprint")
+        metric_by_status_in_sprint = _get_metric_by_key(
+            all_issues, "status_in_sprint", list(STATUS_ORDER.keys())
+        )
+        metric_by_status_issues_active_in_sprint = _get_metric_by_key(
+            list_issues_active, "status_in_sprint", list(STATUS_ORDER.keys())
+        )
+        metric_by_type_issues = _get_metric_by_key(all_issues, "issuetype")
+        metric_by_type_issues_active = _get_metric_by_key(
+            list_issues_active, "issuetype"
+        )
+
+        metric_by_priority = _get_metric_by_key(all_issues, "priority")
+        metric_by_priority_active = _get_metric_by_key(list_issues_active, "priority")
+
+        metric_by_feature = _get_metric_by_key(all_issues, "feature")
+        metric_by_feature_active = _get_metric_by_key(list_issues_active, "feature")
+
+        data = {
+            "count_issues": count_issues,
+            "count_issues_active": len(list_issues_active),
+            "metric_by_status": {
+                "all": metric_by_status_in_sprint,
+                "active": metric_by_status_issues_active_in_sprint,
+            },
+            "metric_by_type": {
+                "all": metric_by_type_issues,
+                "active": metric_by_type_issues_active,
+            },
+            "metric_by_priority": {
+                "all": metric_by_priority,
+                "active": metric_by_priority_active,
+            },
+            "metric_by_feature": {
+                "all": metric_by_feature,
+                "active": metric_by_feature_active,
+            },
+        }
+        return data
 
 
 def _get_field(data: dict, field_name: str, key: str = "value", is_bool: bool = False):
@@ -428,3 +512,18 @@ def _get_field(data: dict, field_name: str, key: str = "value", is_bool: bool = 
     if is_bool:
         return True if (vaule_field and vaule_field == "YES") else False
     return vaule_field
+
+
+def _get_metric_by_key(all_issues, key_count: str, order_by_list: list = []):
+    status_counts = all_issues[key_count].value_counts().to_dict()
+    if not order_by_list:
+        return status_counts
+    # Sắp xếp theo thứ tự định sẵn và thêm các status còn lại
+    metric_by_key = {
+        key: status_counts[key] for key in order_by_list if key in status_counts
+    }
+    # Thêm các status không có trong SATAUS_ORDER
+    metric_by_key.update(
+        {key: count for key, count in status_counts.items() if key not in metric_by_key}
+    )
+    return metric_by_key

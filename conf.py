@@ -31,6 +31,7 @@ DEFAULT_FIELDS_ISSUE = [
     "customfield_10130",
     "customfield_10031",
     "customfield_10191",
+    "customfield_10092",
     "subtasks",
     "reporter",
     "worklog",
@@ -41,8 +42,21 @@ DEFAULT_FIELDS_ISSUE = [
     "duedate",
 ]
 
-KEY_ISSUE_DEBUG = ""
+KEY_ISSUE_DEBUG = "1571"
 DEFAULT_MAX_ISSUE_PER_PAGE = 100
+STATUS_IS_DEV_DONE = ["Done", "Dev Done"]
+
+STATUS_ORDER = {
+    "Reopen": {"name": "Reopen", "color": "#e74c3c"},
+    "To Do": {"name": "To Do", "color": "#95a5a6"},
+    "In Progress": {"name": "In Progress", "color": "#3498db"},
+    "Wait for review": {"name": "Wait for review", "color": "#f1c40f"},
+    "Dev Done": {"name": "Dev Done", "color": "#4ade80"},
+    "Test Done": {"name": "Test Done", "color": "#22c55e"},
+    "Deployed": {"name": "Deployed", "color": "#16a34a"},
+    "Done": {"name": "Done", "color": "#15803d"},
+    "Close": {"name": "Close", "color": "#34495e"},
+}
 
 
 def validate_supabase_config():
